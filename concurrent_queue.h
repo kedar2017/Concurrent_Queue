@@ -1,8 +1,11 @@
 #include <climits>
+#include <atomic>
+#include <ostream>
+#include <iostream>
 
 class Block {
 public:
-    int element = INT_MIN;
+    int element;
 };
 
 class BasicQueue {
@@ -43,6 +46,53 @@ public:
 
     bool is_empty () {
         return (tail == head) && (arr[tail].element == INT_MIN);
+    }
+
+    int tick (int x) {
+        if (x == capacity - 1) {
+            x = 0;
+        } else {
+            x++;
+        }
+        return x;
+    }
+};
+
+class SPSCQueue {
+public:
+    explicit SPSCQueue (int cap = 5)
+        : capacity(cap), arr(new Block[cap]) {}
+
+    ~SPSCQueue() { delete[] arr; }
+    
+    int capacity;
+    Block* arr;
+    std::atomic<int> head{0};
+    std::atomic<int> tail{0};
+    std::atomic<bool> full{false};
+
+    bool push (int x) {
+        int head_temp = head.load(std::memory_order_acquire);
+        int tail_temp = tail.load(std::memory_order_acquire);
+        int temp = tick(tail_temp);
+
+        if (tail_temp == head_temp && full.load(std::memory_order_acquire)) return false;
+
+        arr[tail_temp].element = x;
+        tail.store(temp, std::memory_order_release);
+        if (temp == head_temp) full.store(true, std::memory_order_release);
+        return true;
+    }
+
+    bool deque () {
+        int head_temp = head.load(std::memory_order_acquire);
+        int tail_temp = tail.load(std::memory_order_acquire);
+        
+        if (head_temp == tail_temp && !full.load(std::memory_order_acquire)) return false;
+        
+        head.store(tick(head_temp), std::memory_order_release);
+        full.store(false, std::memory_order_release);
+        return true;
     }
 
     int tick (int x) {
