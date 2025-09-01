@@ -69,18 +69,16 @@ public:
     Block* arr;
     std::atomic<int> head{0};
     std::atomic<int> tail{0};
-    std::atomic<bool> full{false};
 
     bool push (int x) {
         int head_temp = head.load(std::memory_order_acquire);
         int tail_temp = tail.load(std::memory_order_acquire);
         int temp = tick(tail_temp);
 
-        if (tail_temp == head_temp && full.load(std::memory_order_acquire)) return false;
+        if (temp == head_temp) return false;
 
         arr[tail_temp].element = x;
         tail.store(temp, std::memory_order_release);
-        if (temp == head_temp) full.store(true, std::memory_order_release);
         return true;
     }
 
@@ -88,10 +86,31 @@ public:
         int head_temp = head.load(std::memory_order_acquire);
         int tail_temp = tail.load(std::memory_order_acquire);
         
-        if (head_temp == tail_temp && !full.load(std::memory_order_acquire)) return false;
+        if (head_temp == tail_temp) return false;
         
         head.store(tick(head_temp), std::memory_order_release);
-        full.store(false, std::memory_order_release);
+        return true;
+    }
+
+    bool is_empty () {
+        int head_temp = head.load(std::memory_order_acquire);
+        int tail_temp = tail.load(std::memory_order_acquire);
+
+        if (head_temp == tail_temp) {
+            return true;
+        } else {
+            return false;
+        }
+    }
+
+    bool pop (int& popped_ele) {
+        int head_temp = head.load(std::memory_order_acquire);
+        int tail_temp = tail.load(std::memory_order_acquire);
+        
+        if (head_temp == tail_temp) return false;
+        
+        popped_ele = arr[head_temp].element;
+        head.store(tick(head_temp), std::memory_order_release);
         return true;
     }
 
