@@ -71,7 +71,7 @@ public:
     std::atomic<int> tail{0};
 
     bool push (int x) {
-        int head_temp = head.load(std::memory_order_acquire);
+        int head_temp = head.load(std::memory_order_relaxed);
         int tail_temp = tail.load(std::memory_order_acquire);
         int temp = tick(tail_temp);
 
@@ -84,7 +84,7 @@ public:
 
     bool deque () {
         int head_temp = head.load(std::memory_order_acquire);
-        int tail_temp = tail.load(std::memory_order_acquire);
+        int tail_temp = tail.load(std::memory_order_relaxed);
         
         if (head_temp == tail_temp) return false;
         
@@ -105,7 +105,7 @@ public:
 
     bool pop (int& popped_ele) {
         int head_temp = head.load(std::memory_order_acquire);
-        int tail_temp = tail.load(std::memory_order_acquire);
+        int tail_temp = tail.load(std::memory_order_relaxed);
         
         if (head_temp == tail_temp) return false;
         
