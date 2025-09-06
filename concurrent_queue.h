@@ -139,22 +139,22 @@ public:
         cap = capacity;
         block_size = size;
         arr = new GenBlock[capacity];
+        pre_alloc = new uint8_t[block_size * capacity];
         
         for (int i = 0; i < capacity; i++) {
             arr[i].version = 1;
-            arr[i].buffer = new uint8_t[block_size];
+            arr[i].buffer = pre_alloc + block_size * i;
         }
     }
 
     ~GenSPSCQueue() { 
-        for (int i = 0; i < cap; i++) {
-            delete[] arr[i].buffer;
-        }
+        delete[] pre_alloc;
         delete[] arr;
     }
 
     template<class T>
     bool push (const T& v) {
+        if (sizeof(T) > block_size) return false;
         int head_temp = head.load(std::memory_order_relaxed);
         int tail_temp = tail.load(std::memory_order_acquire);
         int temp = tick(tail_temp);
@@ -169,6 +169,7 @@ public:
 
     template<class T>
     bool pop (T& v) {
+        if (sizeof(T) > block_size) return false;
         int head_temp = head.load(std::memory_order_acquire);
         int tail_temp = tail.load(std::memory_order_relaxed);
         
@@ -201,6 +202,7 @@ public:
     }
 
     GenBlock* arr;
+    uint8_t* pre_alloc;
     int cap;
     int block_size;
     std::atomic<int> head{0};
