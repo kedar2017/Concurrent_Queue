@@ -71,7 +71,7 @@ void basic_test_case_3 () {
 
 void spsc_test_case_1 () { 
     SPSCQueue que(100);
-    int counter = 100000;
+    int counter = 1000000;
 
     auto prodFunc = [&]() {
         for (int i = 0; i < counter; i++) {
@@ -82,7 +82,7 @@ void spsc_test_case_1 () {
     auto consFunc = [&]() {
         while (que.is_empty()) std::this_thread::yield();
         int expected = 0;
-        while (expected < 100000) {
+        while (expected < 1000000) {
             int popped_ele;
             if (!que.pop(popped_ele)) {
                 std::this_thread::yield();
@@ -100,11 +100,75 @@ void spsc_test_case_1 () {
     consThread.join();
 }
 
+void gen_spsc_test_case_1 () {
+    GenSPSCQueue que(100, 20);
+
+    struct TestStruct {
+        int a = 0;
+        int b = 0;
+        int c = 0;
+    };
+
+    TestStruct t1, t2, t3, t4, t5;
+    TestStruct ret;
+
+    CUSTOM_ASSERT(que.push(t1), "Did Push(1) succeed ?");
+    CUSTOM_ASSERT(que.push(t2), "Did Push(2) succeed ?");
+    CUSTOM_ASSERT(que.push(t3), "Did Push(3) succeed ?");
+    CUSTOM_ASSERT(que.push(t4), "Did Push(4) succeed ?");
+    CUSTOM_ASSERT(que.pop(ret), "Deque failed");
+    CUSTOM_ASSERT(que.push(t5), "Did Push(5) succeed ?");
+    CUSTOM_ASSERT((bool) (sizeof(TestStruct) < 14), "Struct too big");
+}
+
+void gen_spsc_test_case_2 () {
+    GenSPSCQueue que(100, 20);
+
+    struct TestStruct {
+        int a = 0;
+        int b = 0;
+        int c = 0;
+    };
+
+    int counter = 1000000;
+
+    auto prodFunc = [&]() {
+        for (int i = 0; i < counter; i++) {
+            TestStruct test;
+            test.a = i;
+            while (!que.push(test)) std::this_thread::yield();
+        }
+    };
+
+    auto consFunc = [&]() {
+        while (que.is_empty()) std::this_thread::yield();
+        int expected = 0;
+        while (expected < 1000000) {
+            TestStruct test;
+            if (!que.pop(test)) {
+                std::this_thread::yield();
+                continue;
+            }
+            CUSTOM_ASSERT((expected == test.a), "Peek value mismatch");
+            ++expected;
+        }
+    };
+
+    std::thread prodThread(prodFunc);
+    std::thread consThread(consFunc);
+
+    prodThread.join();
+    consThread.join();
+
+}
+
 int main() {
     basic_test_case_1();
     basic_test_case_2();
     basic_test_case_3();
     spsc_test_case_1();
+    gen_spsc_test_case_1();
+    gen_spsc_test_case_2();
     std::cout << "All SPSCQueue tests passed.\n";
     return 0;
 }
