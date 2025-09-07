@@ -161,14 +161,3 @@ void gen_spsc_test_case_2 () {
     consThread.join();
 
 }
-
-int main() {
-    basic_test_case_1();
-    basic_test_case_2();
-    basic_test_case_3();
-    spsc_test_case_1();
-    gen_spsc_test_case_1();
-    gen_spsc_test_case_2();
-    std::cout << "All SPSCQueue tests passed.\n";
-    return 0;
-}
