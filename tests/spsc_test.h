@@ -161,3 +161,66 @@ void gen_spsc_test_case_2 () {
     consThread.join();
 
 }
+
+
+void mutex_que_test_case_1 () {
+    
+
+    struct TestStruct {
+        int a = 0;
+        int b = 0;
+        int c = 0;
+    };
+    MutexQueue<TestStruct> que(100);
+
+    TestStruct t1, t2, t3, t4, t5;
+    TestStruct ret;
+
+    CUSTOM_ASSERT(que.push(t1), "Did Push(1) succeed ?");
+    CUSTOM_ASSERT(que.push(t2), "Did Push(2) succeed ?");
+    CUSTOM_ASSERT(que.push(t3), "Did Push(3) succeed ?");
+    CUSTOM_ASSERT(que.push(t4), "Did Push(4) succeed ?");
+    CUSTOM_ASSERT(que.pop(ret), "Deque failed");
+    CUSTOM_ASSERT(que.push(t5), "Did Push(5) succeed ?");
+    CUSTOM_ASSERT((bool) (sizeof(TestStruct) < 14), "Struct too big");
+}
+
+void mutex_que_test_case_2 () {
+    struct TestStruct {
+        int a = 0;
+        int b = 0;
+        int c = 0;
+    };
+    MutexQueue<TestStruct> que(100);
+
+    int counter = 1000000;
+
+    auto prodFunc = [&]() {
+        for (int i = 0; i < counter; i++) {
+            TestStruct test;
+            test.a = i;
+            while (!que.push(test)) std::this_thread::yield();
+        }
+    };
+
+    auto consFunc = [&]() {
+        while (que.empty()) std::this_thread::yield();
+        int expected = 0;
+        while (expected < 1000000) {
+            TestStruct test;
+            if (!que.pop(test)) {
+                std::this_thread::yield();
+                continue;
+            }
+            CUSTOM_ASSERT((expected == test.a), "Peek value mismatch");
+            ++expected;
+        }
+    };
+
+    std::thread prodThread(prodFunc);
+    std::thread consThread(consFunc);
+
+    prodThread.join();
+    consThread.join();
+
+}

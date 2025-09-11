@@ -4,6 +4,9 @@
 #include <iostream>
 #include <new>
 #include <cstring>
+#include <mutex>
+#include <queue>
+#include <condition_variable>
 
 class Block {
 public:
@@ -64,6 +67,40 @@ public:
         }
         return x;
     }
+};
+
+template <typename T>
+class MutexQueue {
+public:
+    explicit MutexQueue (int cap = 5)
+        : capacity(cap), que(cap) {}
+
+    bool push (T item) {
+        std::unique_lock<std::mutex> lock(q_mutex);
+        if (size == capacity) return false;
+        que[tail] = item;
+        tail = (tail + 1) % capacity;
+        size++;
+        return true;
+    }
+
+    bool pop (T& item) {
+        std::unique_lock<std::mutex> lock(q_mutex);
+        if (size == 0) return false;
+        item = que[head];
+        head = (head + 1) % capacity;
+        size--;
+        return true;
+    }
+
+    bool empty () {
+        std::unique_lock<std::mutex> lock(q_mutex);
+        return (size == 0);
+    }
+    std::vector<T> que;
+    int head = 0, tail = 0, size = 0;
+    std::mutex q_mutex;
+    int capacity;
 };
 
 class SPSCQueue {
