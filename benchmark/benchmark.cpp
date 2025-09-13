@@ -5,7 +5,7 @@
 
 using clock_tt = std::chrono::steady_clock;
 
-void throughtput_genspscq_benchmark () {
+void throughtput_genspscq_benchmark_TestStruct () {
 
     struct TestStruct {
         int a = 0;
@@ -16,7 +16,7 @@ void throughtput_genspscq_benchmark () {
     uint64_t produced = 0;
     uint64_t consumed = 0;
 
-    GenSPSCQueue que(1000, 12);
+    GenSPSCQueue que(1000, sizeof(TestStruct));
 
     auto prodFunc = [&]() {
         while (!start.load(std::memory_order_acquire)) {}
@@ -47,7 +47,7 @@ void throughtput_genspscq_benchmark () {
     start.store(true, std::memory_order_release);
     auto t0 = clock_tt::now();
 
-    std::this_thread::sleep_for(std::chrono::seconds(3));
+    std::this_thread::sleep_for(std::chrono::seconds(5));
 
     stop.store(true, std::memory_order_release);
     prodThread.join();
@@ -55,7 +55,56 @@ void throughtput_genspscq_benchmark () {
 
     auto t1 = clock_tt::now();
 
-    std::cout << "ops total (GenSPSC Q): " << consumed << " \n";
+    std::cout << "ops total (GenSPSC Q for Test Struct): " << consumed << " \n";
+}
+
+void throughtput_genspscq_benchmark_int () {
+
+    std::atomic<bool> start{false}, stop{false};
+    uint64_t produced = 0;
+    uint64_t consumed = 0;
+    uint64_t counter = 0;
+
+    GenSPSCQueue que(1000, 10);
+
+    auto prodFunc = [&]() {
+        while (!start.load(std::memory_order_acquire)) {}
+        while (!stop.load(std::memory_order_relaxed)) {
+            while (!que.push(counter)) std::this_thread::yield();
+            produced++;
+            counter++;
+        }
+    };
+
+    auto consFunc = [&]() {
+        while (!start.load(std::memory_order_acquire)) {}
+        while (que.is_empty()) std::this_thread::yield();
+        while (!stop.load(std::memory_order_relaxed)) {
+            int i = 0;
+            if (!que.pop(i)) {
+                std::this_thread::yield();
+                continue;
+            }
+            consumed++;
+        }
+    };
+
+    std::thread prodThread(prodFunc);
+    std::thread consThread(consFunc);
+
+    std::this_thread::sleep_for(std::chrono::milliseconds(200));
+    start.store(true, std::memory_order_release);
+    auto t0 = clock_tt::now();
+
+    std::this_thread::sleep_for(std::chrono::seconds(5));
+
+    stop.store(true, std::memory_order_release);
+    prodThread.join();
+    consThread.join();
+
+    auto t1 = clock_tt::now();
+
+    std::cout << "ops total (GenSPSC Q for int): " << consumed << " \n";
 }
 
 void throughtput_boostq_benchmark () {
@@ -100,7 +149,7 @@ void throughtput_boostq_benchmark () {
     start.store(true, std::memory_order_release);
     auto t0 = clock_tt::now();
 
-    std::this_thread::sleep_for(std::chrono::seconds(3));
+    std::this_thread::sleep_for(std::chrono::seconds(5));
 
     stop.store(true, std::memory_order_release);
     prodThread.join();
@@ -153,7 +202,7 @@ void throughtput_mutexq_benchmark () {
     start.store(true, std::memory_order_release);
     auto t0 = clock_tt::now();
 
-    std::this_thread::sleep_for(std::chrono::seconds(3));
+    std::this_thread::sleep_for(std::chrono::seconds(5));
 
     stop.store(true, std::memory_order_release);
     prodThread.join();
@@ -172,11 +221,13 @@ int main() {
     spsc_test_case_1();
     gen_spsc_test_case_1();
     gen_spsc_test_case_2();
+    gen_spsc_test_case_3();
     mutex_que_test_case_1();
     mutex_que_test_case_2();
     std::cout << "All SPSCQueue tests passed.\n";
     
-    throughtput_genspscq_benchmark();
+    throughtput_genspscq_benchmark_TestStruct();
+    throughtput_genspscq_benchmark_int();
     throughtput_boostq_benchmark();
     throughtput_mutexq_benchmark();
     std::cout << "All benchmarks have been run \n";
