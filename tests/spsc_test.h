@@ -162,6 +162,39 @@ void gen_spsc_test_case_2 () {
 
 }
 
+void gen_spsc_test_case_3 () {
+    GenSPSCQueue que(100, 4);
+
+    int counter = 1000000;
+
+    auto prodFunc = [&]() {
+        for (int i = 0; i < counter; i++) {
+            while (!que.push(i)) std::this_thread::yield();
+        }
+    };
+
+    auto consFunc = [&]() {
+        while (que.is_empty()) std::this_thread::yield();
+        int expected = 0;
+        while (expected < 1000000) {
+            int j;
+            if (!que.pop(j)) {
+                std::this_thread::yield();
+                continue;
+            }
+            CUSTOM_ASSERT((expected == j), "Peek value mismatch");
+            ++expected;
+        }
+    };
+
+    std::thread prodThread(prodFunc);
+    std::thread consThread(consFunc);
+
+    prodThread.join();
+    consThread.join();
+
+}
+
 
 void mutex_que_test_case_1 () {
     
