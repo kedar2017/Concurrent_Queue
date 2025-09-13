@@ -169,12 +169,13 @@ public:
     }
 };
 
+template <typename T>
 class GenSPSCQueue {
 public:
     
-    GenSPSCQueue(int capacity, int size) {
+    GenSPSCQueue(int capacity) {
         cap = capacity;
-        block_size = size;
+        block_size = sizeof(T);
         arr = new GenBlock[capacity];
         pre_alloc = new uint8_t[block_size * capacity];
         
@@ -189,9 +190,7 @@ public:
         delete[] arr;
     }
 
-    template<class T>
     bool push (const T& v) {
-        if (sizeof(T) > block_size) return false;
         int head_temp = head.load(std::memory_order_relaxed);
         int tail_temp = tail.load(std::memory_order_acquire);
         int temp = tick(tail_temp);
@@ -204,9 +203,7 @@ public:
         return true;
     }
 
-    template<class T>
     bool pop (T& v) {
-        if (sizeof(T) > block_size) return false;
         int head_temp = head.load(std::memory_order_acquire);
         int tail_temp = tail.load(std::memory_order_relaxed);
         
@@ -245,4 +242,3 @@ public:
     std::atomic<int> head{0};
     std::atomic<int> tail{0};
 };
-

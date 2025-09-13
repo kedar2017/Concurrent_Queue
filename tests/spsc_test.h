@@ -101,14 +101,13 @@ void spsc_test_case_1 () {
 }
 
 void gen_spsc_test_case_1 () {
-    GenSPSCQueue que(100, 20);
-
     struct TestStruct {
         int a = 0;
         int b = 0;
         int c = 0;
     };
 
+    GenSPSCQueue<TestStruct> que(100);
     TestStruct t1, t2, t3, t4, t5;
     TestStruct ret;
 
@@ -122,13 +121,12 @@ void gen_spsc_test_case_1 () {
 }
 
 void gen_spsc_test_case_2 () {
-    GenSPSCQueue que(100, 20);
-
     struct TestStruct {
         int a = 0;
         int b = 0;
         int c = 0;
     };
+    GenSPSCQueue<TestStruct> que(100);
 
     int counter = 1000000;
 
@@ -163,7 +161,7 @@ void gen_spsc_test_case_2 () {
 }
 
 void gen_spsc_test_case_3 () {
-    GenSPSCQueue que(100, 4);
+    GenSPSCQueue<int> que(100);
 
     int counter = 1000000;
 
