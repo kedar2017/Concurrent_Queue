@@ -16,7 +16,7 @@ void throughtput_genspscq_benchmark_TestStruct () {
     uint64_t produced = 0;
     uint64_t consumed = 0;
 
-    GenSPSCQueue que(1000, sizeof(TestStruct));
+    GenSPSCQueue<TestStruct> que(1000);
 
     auto prodFunc = [&]() {
         while (!start.load(std::memory_order_acquire)) {}
@@ -65,7 +65,7 @@ void throughtput_genspscq_benchmark_int () {
     uint64_t consumed = 0;
     uint64_t counter = 0;
 
-    GenSPSCQueue que(1000, 10);
+    GenSPSCQueue<int> que(1000);
 
     auto prodFunc = [&]() {
         while (!start.load(std::memory_order_acquire)) {}
