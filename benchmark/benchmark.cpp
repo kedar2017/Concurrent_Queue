@@ -213,6 +213,59 @@ void throughtput_mutexq_benchmark () {
     std::cout << "ops total (Mutex Q): " << consumed << " \n";
 }
 
+void throughtput_genlocalhtspscq_benchmark_TestStruct () {
+
+    struct TestStruct {
+        int a = 0;
+        int b = 0;
+        int c = 0;
+    };
+    std::atomic<bool> start{false}, stop{false};
+    uint64_t produced = 0;
+    uint64_t consumed = 0;
+
+    GenSPSCQueueLocalHT<TestStruct> que(1000);
+
+    auto prodFunc = [&]() {
+        while (!start.load(std::memory_order_acquire)) {}
+        while (!stop.load(std::memory_order_relaxed)) {
+            TestStruct test;
+            while (!que.push(test)) std::this_thread::yield();
+            produced++;
+        }
+    };
+
+    auto consFunc = [&]() {
+        while (!start.load(std::memory_order_acquire)) {}
+        while (que.is_empty()) std::this_thread::yield();
+        while (!stop.load(std::memory_order_relaxed)) {
+            TestStruct test;
+            if (!que.pop(test)) {
+                std::this_thread::yield();
+                continue;
+            }
+            consumed++;
+        }
+    };
+
+    std::thread prodThread(prodFunc);
+    std::thread consThread(consFunc);
+
+    std::this_thread::sleep_for(std::chrono::milliseconds(200));
+    start.store(true, std::memory_order_release);
+    auto t0 = clock_tt::now();
+
+    std::this_thread::sleep_for(std::chrono::seconds(5));
+
+    stop.store(true, std::memory_order_release);
+    prodThread.join();
+    consThread.join();
+
+    auto t1 = clock_tt::now();
+
+    std::cout << "ops total (GenLocalHTSPSC Q for Test Struct): " << consumed << " \n";
+}
+
 int main() {
     
     basic_test_case_1();
@@ -224,6 +277,8 @@ int main() {
     gen_spsc_test_case_3();
     mutex_que_test_case_1();
     mutex_que_test_case_2();
+    gen_localHT_spsc_test_case_1();
+    gen_localHT_spsc_test_case_2();
     std::cout << "All SPSCQueue tests passed.\n";
     
     throughtput_genspscq_benchmark_TestStruct();
