@@ -255,3 +255,81 @@ void mutex_que_test_case_2 () {
     consThread.join();
 
 }
+
+
+void gen_localHT_spsc_test_case_1 () {
+    struct TestStruct {
+        int a = 0;
+        int b = 0;
+        int c = 0;
+    };
+
+    GenSPSCQueueLocalHT<TestStruct> que(5);
+    TestStruct t1, t2, t3, t4, t5;
+    TestStruct ret;
+
+    CUSTOM_ASSERT(que.push(t1), "Did Push(1) succeed ?");
+    CUSTOM_ASSERT(que.push(t2), "Did Push(2) succeed ?");
+    CUSTOM_ASSERT(que.push(t3), "Did Push(3) succeed ?");
+    CUSTOM_ASSERT(que.push(t4), "Did Push(4) succeed ?");
+    CUSTOM_ASSERT(que.pop(ret), "Deque failed");
+    CUSTOM_ASSERT(que.push(t5), "Did Push(5) succeed ?");
+    CUSTOM_ASSERT(que.push(t5), "Did Push(6) succeed ?");
+    CUSTOM_ASSERT(!que.push(t5), "Did Push(7) succeed ?");
+    CUSTOM_ASSERT(!que.push(t5), "Did Push(8) succeed ?");
+    CUSTOM_ASSERT(!que.push(t5), "Did Push(9) succeed ?");
+    CUSTOM_ASSERT(que.pop(ret), "Deque failed");
+    CUSTOM_ASSERT(que.pop(ret), "Deque failed");
+    CUSTOM_ASSERT(que.pop(ret), "Deque failed");
+    CUSTOM_ASSERT(que.pop(ret), "Deque failed");
+    CUSTOM_ASSERT(que.pop(ret), "Deque failed");
+    CUSTOM_ASSERT(!que.pop(ret), "Deque failed");
+    CUSTOM_ASSERT((bool) (sizeof(TestStruct) < 14), "Struct too big");
+}
+
+void gen_localHT_spsc_test_case_2 () {
+    struct TestStruct {
+        int a = 0;
+        int b = 0;
+        int c = 0;
+    };
+    GenSPSCQueueLocalHT<TestStruct> que(100);
+
+    int counter = 1000000;
+
+    auto prodFunc = [&]() {
+        for (int i = 0; i < counter; i++) {
+            TestStruct test;
+            test.a = i;
+            while (!que.push(test)) {
+                std::this_thread::yield();
+                //std::cout << "PROD loop stuck \n";
+            }
+        }
+    };
+
+    auto consFunc = [&]() {
+        while (que.is_empty()) {
+            std::this_thread::yield();
+            //std::cout << "WOOOOOOOTTTT \n";
+        }
+
+        int expected = 0;
+        while (expected < 1000000) {
+            TestStruct test;
+            if (!que.pop(test)) {
+                std::this_thread::yield();
+                //std::cout << "CONS loop stuck \n";
+                continue;
+            }
+            CUSTOM_ASSERT((expected == test.a), "Peek value mismatch");
+            ++expected;
+        }
+    };
+
+    std::thread prodThread(prodFunc);
+    std::thread consThread(consFunc);
+
+    prodThread.join();
+    consThread.join();
+}

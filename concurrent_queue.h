@@ -19,6 +19,12 @@ public:
     int version;
 };
 
+class GenBlockLocalVar {
+public:
+    uint8_t* buffer;
+    std::atomic<int> version;
+};
+
 class BasicQueue {
 public:
     explicit BasicQueue (int cap = 5)
@@ -241,4 +247,70 @@ public:
     int block_size;
     std::atomic<int> head{0};
     std::atomic<int> tail{0};
+};
+
+
+template <typename T>
+class GenSPSCQueueLocalHT {
+public:
+    
+    GenSPSCQueueLocalHT (int capacity) {
+        cap = capacity;
+        block_size = sizeof(T);
+        arr = new GenBlockLocalVar[capacity];
+        pre_alloc = new uint8_t[block_size * capacity];
+        
+        for (int i = 0; i < capacity; i++) {
+            arr[i].version = 0;
+            arr[i].buffer = pre_alloc + block_size * i;
+        }
+    }
+
+    ~GenSPSCQueueLocalHT () { 
+        delete[] pre_alloc;
+        delete[] arr;
+    }
+
+    bool push (const T& v) {
+        int version_curr = arr[tail].version.load(std::memory_order_acquire);
+        if (version_curr == 1) return false;
+
+        memcpy(arr[tail].buffer, &v, sizeof(T));
+        arr[tail].version.store(1, std::memory_order_release);
+        tail = tick(tail);
+        return true;
+    }
+
+    bool pop (T& v) {
+        int version_curr = arr[head].version.load(std::memory_order_acquire);
+
+        if (version_curr == 0) return false;
+        
+        memcpy(&v, arr[head].buffer, sizeof(T));
+
+        arr[head].version.store(0, std::memory_order_release);
+        head = tick(head);
+        return true;
+    }
+
+    bool is_empty () {
+        int version_curr = arr[head].version.load(std::memory_order_acquire);
+        return version_curr == 0;
+    }
+
+    int tick (int x) {
+        if (x == cap - 1) {
+            x = 0;
+        } else {
+            x++;
+        }
+        return x;
+    }
+
+    GenBlockLocalVar* arr;
+    uint8_t* pre_alloc;
+    int cap;
+    int block_size;
+    int head{0};
+    int tail{0};
 };
