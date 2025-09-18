@@ -285,6 +285,7 @@ int main() {
     throughtput_genspscq_benchmark_int();
     throughtput_boostq_benchmark();
     throughtput_mutexq_benchmark();
+    throughtput_genlocalhtspscq_benchmark_TestStruct();
     std::cout << "All benchmarks have been run \n";
     return 0;
 }

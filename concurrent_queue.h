@@ -294,7 +294,8 @@ public:
     }
 
     bool is_empty () {
-        return (head == tail);
+        int version_curr = arr[head].version.load(std::memory_order_acquire);
+        return version_curr == 0;
     }
 
     int tick (int x) {
