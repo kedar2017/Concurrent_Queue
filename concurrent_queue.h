@@ -21,8 +21,8 @@ public:
 
 class GenBlockLocalVar {
 public:
-    uint8_t* buffer;
-    std::atomic<int> version;
+    alignas(64) uint8_t buffer[8]{};
+    alignas(64) std::atomic<int> version;
 };
 
 class BasicQueue {
@@ -258,16 +258,13 @@ public:
         cap = capacity;
         block_size = sizeof(T);
         arr = new GenBlockLocalVar[capacity];
-        pre_alloc = new uint8_t[block_size * capacity];
         
         for (int i = 0; i < capacity; i++) {
             arr[i].version = 0;
-            arr[i].buffer = pre_alloc + block_size * i;
         }
     }
 
     ~GenSPSCQueueLocalHT () { 
-        delete[] pre_alloc;
         delete[] arr;
     }
 
@@ -277,7 +274,7 @@ public:
 
         memcpy(arr[tail].buffer, &v, sizeof(T));
         arr[tail].version.store(1, std::memory_order_release);
-        tail = tick(tail);
+        tail = tail == cap - 1 ? 0 : ++tail;
         return true;
     }
 
@@ -289,7 +286,7 @@ public:
         memcpy(&v, arr[head].buffer, sizeof(T));
 
         arr[head].version.store(0, std::memory_order_release);
-        head = tick(head);
+        head = head == cap - 1 ? 0 : ++head;
         return true;
     }
 
@@ -298,19 +295,9 @@ public:
         return version_curr == 0;
     }
 
-    int tick (int x) {
-        if (x == cap - 1) {
-            x = 0;
-        } else {
-            x++;
-        }
-        return x;
-    }
-
     GenBlockLocalVar* arr;
-    uint8_t* pre_alloc;
-    int cap;
-    int block_size;
-    int head{0};
-    int tail{0};
+    uint32_t cap;
+    uint32_t block_size;
+    alignas(64) uint32_t head{0};
+    alignas(64) uint32_t tail{0};
 };
