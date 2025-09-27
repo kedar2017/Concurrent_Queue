@@ -23,7 +23,9 @@ class GenBlockLocalVar {
 public:
     alignas(64) uint8_t buffer[8]{};
     char pad1[64 - sizeof(buffer)];
-    alignas(64) std::atomic<int> version;
+    alignas(64) int version_prod;
+    char pad2[64 - sizeof(std::atomic<int>)];
+    alignas(64) std::atomic<int> version_cons;
 };
 
 class BasicQueue {
@@ -261,7 +263,8 @@ public:
         arr = new GenBlockLocalVar[capacity];
         
         for (int i = 0; i < capacity; i++) {
-            arr[i].version = 0;
+            arr[i].version_cons = 0;
+            arr[i].version_prod = 0;
         }
     }
 
@@ -270,30 +273,33 @@ public:
     }
 
     bool push (const T& v) {
-        int version_curr = arr[tail].version.load(std::memory_order_acquire);
-        if (version_curr == 1) return false;
+        arr[tail].version_prod.fetch_add(1, std::memory_order_relaxed);
 
+        // has this already been consumed  ? 
         memcpy(arr[tail].buffer, &v, sizeof(T));
-        arr[tail].version.store(1, std::memory_order_release);
+
+        arr[tail].version_prod.fetch_add(1, std::memory_order_relaxed);
+
+
         tail = tail == cap - 1 ? 0 : ++tail;
         return true;
     }
 
     bool pop (T& v) {
-        int version_curr = arr[head].version.load(std::memory_order_acquire);
-
-        if (version_curr == 0) return false;
-        
+        int temp = arr[head].version_cons.load(std::memory_order_acquire);
+        if (temp != 2) return false;
+ 
         memcpy(&v, arr[head].buffer, sizeof(T));
 
-        arr[head].version.store(0, std::memory_order_release);
+        arr[head].version_cons.store(0,std::memory_order_release);
+
         head = head == cap - 1 ? 0 : ++head;
         return true;
     }
 
     bool is_empty () {
-        int version_curr = arr[head].version.load(std::memory_order_acquire);
-        return version_curr == 0;
+        int temp = arr[head].version_cons.load(std::memory_order_acquire);
+        return temp == 0;
     }
 
     GenBlockLocalVar* arr;

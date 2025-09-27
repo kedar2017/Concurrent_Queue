@@ -280,12 +280,12 @@ int main() {
     gen_localHT_spsc_test_case_1();
     gen_localHT_spsc_test_case_2();
     std::cout << "All SPSCQueue tests passed.\n";
-    
-    throughtput_genspscq_benchmark_TestStruct();
-    throughtput_genspscq_benchmark_int();
-    throughtput_boostq_benchmark();
-    throughtput_mutexq_benchmark();
-    throughtput_genlocalhtspscq_benchmark_TestStruct();
+
+    //throughtput_genspscq_benchmark_TestStruct();
+    //throughtput_genspscq_benchmark_int();
+    //throughtput_boostq_benchmark();
+    //throughtput_mutexq_benchmark();
+    //throughtput_genlocalhtspscq_benchmark_TestStruct();
     std::cout << "All benchmarks have been run \n";
     return 0;
 }

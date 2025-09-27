@@ -323,12 +323,14 @@ void gen_localHT_spsc_test_case_2 () {
                 continue;
             }
             CUSTOM_ASSERT((expected == test.a), "Peek value mismatch");
+            //std::cout << "expected " << expected << " test.a " << test.a;
             ++expected;
         }
     };
 
-    std::thread prodThread(prodFunc);
     std::thread consThread(consFunc);
+    std::this_thread::sleep_for(std::chrono::milliseconds(50));
+    std::thread prodThread(prodFunc);
 
     prodThread.join();
     consThread.join();
