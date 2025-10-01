@@ -264,7 +264,7 @@ void gen_localHT_spsc_test_case_1 () {
         int c = 0;
     };
 
-    GenSPSCQueueLocalHT<TestStruct> que(5);
+    GenSPSCQueueLocalHT<TestStruct> que(8);
     TestStruct t1, t2, t3, t4, t5;
     TestStruct ret;
 
@@ -275,9 +275,15 @@ void gen_localHT_spsc_test_case_1 () {
     CUSTOM_ASSERT(que.pop(ret), "Deque failed");
     CUSTOM_ASSERT(que.push(t5), "Did Push(5) succeed ?");
     CUSTOM_ASSERT(que.push(t5), "Did Push(6) succeed ?");
+    CUSTOM_ASSERT(que.push(t5), "Did Push(6) succeed ?");
+    CUSTOM_ASSERT(que.push(t5), "Did Push(6) succeed ?");
+    CUSTOM_ASSERT(que.push(t5), "Did Push(6) succeed ?");
     CUSTOM_ASSERT(!que.push(t5), "Did Push(7) succeed ?");
     CUSTOM_ASSERT(!que.push(t5), "Did Push(8) succeed ?");
     CUSTOM_ASSERT(!que.push(t5), "Did Push(9) succeed ?");
+    CUSTOM_ASSERT(que.pop(ret), "Deque failed");
+    CUSTOM_ASSERT(que.pop(ret), "Deque failed");
+    CUSTOM_ASSERT(que.pop(ret), "Deque failed");
     CUSTOM_ASSERT(que.pop(ret), "Deque failed");
     CUSTOM_ASSERT(que.pop(ret), "Deque failed");
     CUSTOM_ASSERT(que.pop(ret), "Deque failed");
@@ -293,7 +299,7 @@ void gen_localHT_spsc_test_case_2 () {
         int b = 0;
         int c = 0;
     };
-    GenSPSCQueueLocalHT<TestStruct> que(100);
+    GenSPSCQueueLocalHT<TestStruct> que(128);
 
     int counter = 1000000;
 

@@ -275,7 +275,7 @@ public:
 
         memcpy(arr[tail].buffer, &v, sizeof(T));
         arr[tail].version.store(1, std::memory_order_release);
-        tail = tail == cap - 1 ? 0 : ++tail;
+        tail = (tail + 1) & (cap - 1);
         return true;
     }
 
@@ -287,7 +287,7 @@ public:
         memcpy(&v, arr[head].buffer, sizeof(T));
 
         arr[head].version.store(0, std::memory_order_release);
-        head = head == cap - 1 ? 0 : ++head;
+        head = (head + 1) & (cap - 1);
         return true;
     }
 
