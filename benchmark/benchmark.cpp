@@ -22,7 +22,7 @@ void throughtput_genspscq_benchmark_TestStruct () {
         while (!start.load(std::memory_order_acquire)) {}
         while (!stop.load(std::memory_order_relaxed)) {
             TestStruct test;
-            while (!que.push(test)) std::this_thread::yield();
+            if (!que.push(test))
             produced++;
         }
     };
@@ -70,7 +70,7 @@ void throughtput_genspscq_benchmark_int () {
     auto prodFunc = [&]() {
         while (!start.load(std::memory_order_acquire)) {}
         while (!stop.load(std::memory_order_relaxed)) {
-            while (!que.push(counter)) std::this_thread::yield();
+            if (!que.push(counter));
             produced++;
             counter++;
         }
@@ -124,7 +124,7 @@ void throughtput_boostq_benchmark () {
         while (!start.load(std::memory_order_acquire)) {}
         while (!stop.load(std::memory_order_relaxed)) {
             TestStruct test;
-            while (!que.push(test)) std::this_thread::yield();
+            while (!que.push(test));
             produced++;
         }
     };
@@ -177,7 +177,7 @@ void throughtput_mutexq_benchmark () {
         while (!start.load(std::memory_order_acquire)) {}
         while (!stop.load(std::memory_order_relaxed)) {
             TestStruct test;
-            while (!que.push(test)) std::this_thread::yield();
+            while (!que.push(test));
             produced++;
         }
     };
@@ -221,17 +221,17 @@ void throughtput_genlocalhtspscq_benchmark_TestStruct () {
         int c = 0;
     };
     std::atomic<bool> start{false}, stop{false};
-    uint64_t produced = 0;
+    uint64_t temp = 0;
     uint64_t consumed = 0;
 
-    GenSPSCQueueLocalHT<TestStruct> que(1000);
+    GenSPSCQueueLocalHT<TestStruct> que(1024);
 
     auto prodFunc = [&]() {
         while (!start.load(std::memory_order_acquire)) {}
         while (!stop.load(std::memory_order_relaxed)) {
             TestStruct test;
-            while (!que.push(test)) std::this_thread::yield();
-            produced++;
+            if (!que.push(test))
+            temp++;
         }
     };
 
@@ -240,11 +240,8 @@ void throughtput_genlocalhtspscq_benchmark_TestStruct () {
         while (que.is_empty()) std::this_thread::yield();
         while (!stop.load(std::memory_order_relaxed)) {
             TestStruct test;
-            if (!que.pop(test)) {
-                std::this_thread::yield();
-                continue;
-            }
-            consumed++;
+            if (que.pop(test))
+                consumed++;
         }
     };
 
