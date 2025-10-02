@@ -21,8 +21,7 @@ public:
 
 class GenBlockLocalVar {
 public:
-    alignas(64) uint8_t buffer[8]{};
-    char pad1[64 - sizeof(buffer)];
+    alignas(64) uint8_t buffer[64]{};
     alignas(64) std::atomic<int> version;
 };
 
