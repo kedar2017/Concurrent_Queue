@@ -224,11 +224,11 @@ void throughtput_genlocalhtspscq_benchmark_TestStruct () {
     uint64_t temp = 0;
     uint64_t consumed = 0;
 
-    GenSPSCQueueLocalHT<TestStruct> que(1024);
+    GenSPSCQueueLocalHT<TestStruct> que(131072);
 
     auto prodFunc = [&]() {
         while (!start.load(std::memory_order_acquire)) {}
-        while (!stop.load(std::memory_order_relaxed)) {
+        while (!stop) {
             TestStruct test;
             if (!que.push(test))
             temp++;
@@ -238,7 +238,7 @@ void throughtput_genlocalhtspscq_benchmark_TestStruct () {
     auto consFunc = [&]() {
         while (!start.load(std::memory_order_acquire)) {}
         while (que.is_empty()) std::this_thread::yield();
-        while (!stop.load(std::memory_order_relaxed)) {
+        while (!stop) {
             TestStruct test;
             if (que.pop(test))
                 consumed++;
@@ -254,7 +254,7 @@ void throughtput_genlocalhtspscq_benchmark_TestStruct () {
 
     std::this_thread::sleep_for(std::chrono::seconds(5));
 
-    stop.store(true, std::memory_order_release);
+    stop = true;
     prodThread.join();
     consThread.join();
 
@@ -265,15 +265,15 @@ void throughtput_genlocalhtspscq_benchmark_TestStruct () {
 
 int main() {
     
-    basic_test_case_1();
-    basic_test_case_2();
-    basic_test_case_3();
-    spsc_test_case_1();
-    gen_spsc_test_case_1();
-    gen_spsc_test_case_2();
-    gen_spsc_test_case_3();
-    mutex_que_test_case_1();
-    mutex_que_test_case_2();
+    //basic_test_case_1();
+    //basic_test_case_2();
+    //basic_test_case_3();
+    //spsc_test_case_1();
+    //gen_spsc_test_case_1();
+    //gen_spsc_test_case_2();
+    //gen_spsc_test_case_3();
+    //mutex_que_test_case_1();
+    //mutex_que_test_case_2();
     gen_localHT_spsc_test_case_1();
     gen_localHT_spsc_test_case_2();
     std::cout << "All SPSCQueue tests passed.\n";

@@ -269,35 +269,50 @@ public:
     }
 
     bool push (const T& v) {
-        int version_curr = arr[tail].version.load(std::memory_order_acquire);
-        if (version_curr == 1) return false;
-
+        uint32_t tail_temp = (tail_local + 1) & (cap - 1);
+        if (tail_temp == head_cache) {
+            head_cache = head.load(std::memory_order_acquire);
+            if (tail_temp == head_cache) {
+                return false;
+            }
+        }
         memcpy(arr[tail].buffer, &v, sizeof(T));
-        arr[tail].version.store(1, std::memory_order_release);
-        tail = (tail + 1) & (cap - 1);
+        tail_local = tail_temp;
+        tail.store(tail_local, std::memory_order_release);
         return true;
     }
 
     bool pop (T& v) {
-        int version_curr = arr[head].version.load(std::memory_order_acquire);
-
-        if (version_curr == 0) return false;
-        
+        if (head_local == tail_cache) {
+            tail_cache = tail.load(std::memory_order_acquire);
+            if (head_local == tail_cache) {
+                return false;
+            }
+        }
         memcpy(&v, arr[head].buffer, sizeof(T));
-
-        arr[head].version.store(0, std::memory_order_release);
-        head = (head + 1) & (cap - 1);
+        head_local = (head_local + 1) & (cap - 1);
+        head.store(head_local, std::memory_order_release);
         return true;
     }
 
     bool is_empty () {
-        int version_curr = arr[head].version.load(std::memory_order_acquire);
-        return version_curr == 0;
+        int head_temp = head.load(std::memory_order_acquire);
+        int tail_temp = tail.load(std::memory_order_acquire);
+
+        if (head_temp == tail_temp) {
+            return true;
+        } else {
+            return false;
+        }
     }
 
     GenBlockLocalVar* arr;
     uint32_t cap;
     uint32_t block_size;
-    alignas(64) uint32_t head{0};
-    alignas(64) uint32_t tail{0};
+    alignas(64) std::atomic<uint32_t> head{0};
+    alignas(64) uint32_t tail_local{0};
+    alignas(64) std::atomic<uint32_t> tail{0};
+    alignas(64) uint32_t head_local{0};
+    alignas(64) uint32_t head_cache{0};
+    alignas(64) uint32_t tail_cache{0};
 };
