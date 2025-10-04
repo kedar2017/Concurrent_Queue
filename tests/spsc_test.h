@@ -275,21 +275,20 @@ void gen_localHT_spsc_test_case_1 () {
     CUSTOM_ASSERT(que.pop(ret), "Deque failed");
     CUSTOM_ASSERT(que.push(t5), "Did Push(5) succeed ?");
     CUSTOM_ASSERT(que.push(t5), "Did Push(6) succeed ?");
-    CUSTOM_ASSERT(que.push(t5), "Did Push(6) succeed ?");
-    CUSTOM_ASSERT(que.push(t5), "Did Push(6) succeed ?");
-    CUSTOM_ASSERT(que.push(t5), "Did Push(6) succeed ?");
+    CUSTOM_ASSERT(que.push(t5), "Did Push(16) succeed ?");
+    CUSTOM_ASSERT(que.push(t5), "Did Push(26) succeed ?");
     CUSTOM_ASSERT(!que.push(t5), "Did Push(7) succeed ?");
     CUSTOM_ASSERT(!que.push(t5), "Did Push(8) succeed ?");
     CUSTOM_ASSERT(!que.push(t5), "Did Push(9) succeed ?");
-    CUSTOM_ASSERT(que.pop(ret), "Deque failed");
-    CUSTOM_ASSERT(que.pop(ret), "Deque failed");
-    CUSTOM_ASSERT(que.pop(ret), "Deque failed");
-    CUSTOM_ASSERT(que.pop(ret), "Deque failed");
-    CUSTOM_ASSERT(que.pop(ret), "Deque failed");
-    CUSTOM_ASSERT(que.pop(ret), "Deque failed");
-    CUSTOM_ASSERT(que.pop(ret), "Deque failed");
-    CUSTOM_ASSERT(que.pop(ret), "Deque failed");
-    CUSTOM_ASSERT(!que.pop(ret), "Deque failed");
+    CUSTOM_ASSERT(que.pop(ret), "Deque failed 1");
+    CUSTOM_ASSERT(que.pop(ret), "Deque failed 2");
+    CUSTOM_ASSERT(que.pop(ret), "Deque failed 3");
+    CUSTOM_ASSERT(que.pop(ret), "Deque failed 4");
+    CUSTOM_ASSERT(que.pop(ret), "Deque failed 5");
+    CUSTOM_ASSERT(que.pop(ret), "Deque failed 6");
+    CUSTOM_ASSERT(que.pop(ret), "Deque failed 7");
+    CUSTOM_ASSERT(!que.pop(ret), "Deque failed 8");
+    CUSTOM_ASSERT(!que.pop(ret), "Deque failed 9");
     CUSTOM_ASSERT((bool) (sizeof(TestStruct) < 14), "Struct too big");
 }
 
