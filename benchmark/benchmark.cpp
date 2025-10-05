@@ -263,6 +263,56 @@ void throughtput_genlocalhtspscq_benchmark_TestStruct () {
     std::cout << "ops total (GenLocalHTSPSC Q for Test Struct): " << consumed << " \n";
 }
 
+void throughtput_fastspscqueue_benchmark_TestStruct () {
+
+    struct TestStruct {
+        int a = 0;
+        int b = 0;
+        int c = 0;
+    };
+    std::atomic<bool> start{false}, stop{false};
+    uint64_t temp = 0;
+    uint64_t consumed = 0;
+
+    SPSCFastQueue<TestStruct> que(1024);
+
+    auto prodFunc = [&]() {
+        while (!start.load(std::memory_order_acquire)) {}
+        while (!stop.load(std::memory_order_relaxed)) {
+            TestStruct test;
+            if (!que.push(test))
+            temp++;
+        }
+    };
+
+    auto consFunc = [&]() {
+        while (!start.load(std::memory_order_acquire)) {}
+        while (que.is_empty()) std::this_thread::yield();
+        while (!stop.load(std::memory_order_relaxed)) {
+            TestStruct test;
+            if (que.pop(test))
+                consumed++;
+        }
+    };
+
+    std::thread prodThread(prodFunc);
+    std::thread consThread(consFunc);
+
+    std::this_thread::sleep_for(std::chrono::milliseconds(200));
+    start.store(true, std::memory_order_release);
+    auto t0 = clock_tt::now();
+
+    std::this_thread::sleep_for(std::chrono::seconds(5));
+
+    stop.store(true, std::memory_order_release);
+    prodThread.join();
+    consThread.join();
+
+    auto t1 = clock_tt::now();
+
+    std::cout << "ops total (FastSPSC Q for Test Struct): " << consumed << " \n";
+}
+
 int main() {
     
     basic_test_case_1();
@@ -276,6 +326,8 @@ int main() {
     mutex_que_test_case_2();
     gen_localHT_spsc_test_case_1();
     gen_localHT_spsc_test_case_2();
+    fast_spsc_test_case_1();
+    fast_spsc_test_case_2();
     std::cout << "All SPSCQueue tests passed.\n";
     
     throughtput_genspscq_benchmark_TestStruct();
@@ -283,6 +335,7 @@ int main() {
     throughtput_boostq_benchmark();
     throughtput_mutexq_benchmark();
     throughtput_genlocalhtspscq_benchmark_TestStruct();
+    throughtput_fastspscqueue_benchmark_TestStruct();
     std::cout << "All benchmarks have been run \n";
     return 0;
 }
