@@ -25,6 +25,11 @@ public:
     alignas(64) std::atomic<int> version;
 };
 
+class SPSCFastBlock {
+public:
+    alignas(64) uint8_t buffer[64]{};
+};
+
 class BasicQueue {
 public:
     explicit BasicQueue (int cap = 5)
@@ -300,4 +305,67 @@ public:
     uint32_t block_size;
     alignas(64) uint32_t head{0};
     alignas(64) uint32_t tail{0};
+};
+
+template <typename T>
+class SPSCFastQueue {
+public:
+    
+    SPSCFastQueue (int capacity) {
+        cap = capacity;
+        block_size = sizeof(T);
+        arr = new SPSCFastBlock[capacity];
+    }
+
+    ~SPSCFastQueue () { 
+        delete[] arr;
+    }
+
+    bool push (const T& v) {
+        uint32_t tail_temp = (tail_local + 1) & (cap - 1);
+        if (tail_temp == head_cache) {
+            head_cache = head.load(std::memory_order_acquire);
+            if (tail_temp == head_cache) {
+                return false;
+            }
+        }
+        memcpy(arr[tail].buffer, &v, sizeof(T));
+        tail_local = tail_temp;
+        tail.store(tail_local, std::memory_order_release);
+        return true;
+    }
+
+    bool pop (T& v) {
+        if (head_local == tail_cache) {
+            tail_cache = tail.load(std::memory_order_acquire);
+            if (head_local == tail_cache) {
+                return false;
+            }
+        }
+        memcpy(&v, arr[head].buffer, sizeof(T));
+        head_local = (head_local + 1) & (cap - 1);
+        head.store(head_local, std::memory_order_release);
+        return true;
+    }
+
+    bool is_empty () {
+        int head_temp = head.load(std::memory_order_acquire);
+        int tail_temp = tail.load(std::memory_order_acquire);
+
+        if (head_temp == tail_temp) {
+            return true;
+        } else {
+            return false;
+        }
+    }
+
+    SPSCFastBlock* arr;
+    uint32_t cap;
+    uint32_t block_size;
+    alignas(64) std::atomic<uint32_t> head{0};
+    alignas(64) uint32_t tail_local{0};
+    alignas(64) std::atomic<uint32_t> tail{0};
+    alignas(64) uint32_t head_local{0};
+    alignas(64) uint32_t head_cache{0};
+    alignas(64) uint32_t tail_cache{0};
 };
