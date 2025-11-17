@@ -18,7 +18,6 @@ It’s both a **learning project** (atomics, cache behavior, lock-free vs lock-b
 - [Sample performance results](#sample-performance-results)  
 - [Design notes](#design-notes)  
 - [Future work](#future-work)  
-- [How this maps to interview topics](#how-this-maps-to-interview-topics)
 
 ---
 
