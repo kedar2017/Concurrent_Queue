@@ -1,43 +1,196 @@
 # Concurrent_Queue
 
-Concurrent Queue benchmarks
+> Concurrent queue microbenchmark suite – currently focused on single-producer / single-consumer (SPSC) queues in modern C++.
 
-A small suite to benchmark throughput and latency of several single-producer/single-consumer (SPSC) queue implementations in C++. 
-The current fastest in my implementation is SPSCFastQueue. 
+This repository contains a small, focused benchmark harness for comparing different SPSC queue implementations — from a simple mutex-based queue to custom lock-free ring buffers and Boost’s lock-free queue.
 
-Motivation
+It’s both a **learning project** (atomics, cache behavior, lock-free vs lock-based) and a **reusable microbenchmark** you can run on your own hardware.
 
-Lock-free and wait-free queues behave very differently depending on the CPU, cache topology, and traffic pattern (bursty versus steady state). 
-This repo aims to provide microbenchmarks that you can run locally. 
+---
 
-Currently implemented versions:
+## Table of contents
 
-- SPSCFastQueue - fixed capacity ring buffer 
-- Mutex based queue - classic lock based queue
-- Boost lockfree queue - as a baseline - current SPSCFastQueue beats this queue with a good margin  
+- [Motivation](#motivation)  
+- [Implemented queues](#implemented-queues)  
+- [Repository layout](#repository-layout)  
+- [Building & running](#building--running)  
+- [Example usage](#example-usage)  
+- [Sample performance results](#sample-performance-results)  
+- [Design notes](#design-notes)  
+- [Future work](#future-work)  
+- [How this maps to interview topics](#how-this-maps-to-interview-topics)
 
-Build & Requirements
+---
+
+## Motivation
+
+Lock-free and wait-free queues behave very differently depending on:
+
+- CPU microarchitecture  
+- Cache topology / NUMA layout  
+- Traffic pattern (steady state vs bursty)  
+
+Rather than relying on generic “X is faster than Y” claims, this repo provides microbenchmarks you can run locally to:
+
+- Compare **simple mutex-based queues** against **lock-free SPSC queues**
+- See the impact of **cache-line padding**, **per-slot metadata**, and **atomics**
+- Get an intuition for **throughput vs latency** trade-offs in real systems
+
+---
+
+## Implemented queues
+
+Currently implemented queue variants:
+
+| Queue                       | Style                      | Progress model      | Notes |
+|----------------------------|----------------------------|---------------------|-------|
+| `SPSCFastQueue`            | Fixed-capacity ring buffer | SPSC, lock-free-ish | Cache-line-padded head/tail atomics, payload path free of atomics in steady state. Typically the fastest implementation. |
+| `GenSPSCQueue`             | Generic SPSC queue         | SPSC                | More general design; configurable block size and payload type. |
+| `GenSPSCQueueLocalHT`      | Per-slot version tag queue | SPSC                | Per-slot 0/1 “handshake” tag; easy to reason about / extend with metadata. |
+| `Boost::lockfree::queue`   | External baseline          | Lock-free           | Used as a reference implementation and baseline. |
+| `MutexQueue` (mutex-based) | `std::mutex` + container   | SPSC                | Simple lock-based baseline to compare against. |
+
+> Note: all queues in this repo are SPSC – one dedicated producer thread and one dedicated consumer thread.
+
+---
+
+## Repository layout
+
+- `concurrent_queue.h`  
+  Core SPSC queue implementations (`SPSCFastQueue`, `GenSPSCQueue`, `GenSPSCQueueLocalHT`, mutex-based queue, thin wrapper around Boost).
+
+- `benchmark/`  
+  Benchmark harnesses for measuring throughput for different queue types and payloads (`int`, custom `TestStruct`, etc.).
+
+- `tests/`  
+  Small correctness tests / sanity checks for the queue APIs.
+
+---
+
+## Building & running
+
+### Requirements
 
 - C++17 or newer
-- -pthread
+- POSIX threads (`-pthread`)
+- Boost (for the Boost lock-free queue baseline)
 
+### Build
 
-Current performance 
+Example using `g++`:
+
+```bash
+git clone https://github.com/kedar2017/Concurrent_Queue.git
+cd Concurrent_Queue
+
+# Basic benchmark build (adjust *.cpp as needed)
+g++ -std=c++17 -O3 -pthread -I. benchmark/*.cpp -o spsc_bench
 
 ```
-ops total (GenSPSC Q for Test Struct): 46812631 
-ops total (GenSPSC Q for int): 45871810 
-ops total (Boost Q): 36101913 
-ops total (Mutex Q): 16865823 
-ops total (GenLocalHTSPSC Q for Test Struct): 65578759 
-ops total (FastSPSC Q for Test Struct): 93073908 
-All benchmarks have been run 
+
+## Run benchmarks 
+
+```./spsc_bench
 ```
 
-TODO: add latency numbers and clean up the throughput defintion
+The benchmark executable prints throughput numbers (operations completed) for each queue implementation / payload combination over a fixed test window.
 
-Design notes
+## Example usage 
 
-SPSCFastQueue is an SPSC ring that synchronizes via cache-line-padded head/tail atomics, keeping the payload path free of atomics; in steady state it does one release store per side and touches acquire loads only near full/empty → typically the fastest. 
+Below is a minimal sketch of using an SPSC queue
 
-GenSPSCQueueLocalHT uses a per-slot version tag (0/1) as the handshake; it’s simpler to reason about and easier to extend with per-cell metadata, but it performs an acquire+release on every message and flips a tag inside the slot’s cache line, which can reduce throughput on modern cores.
+```
+#include "concurrent_queue.h"
+#include <thread>
+#include <iostream>
+
+int main() {
+    constexpr std::size_t capacity = 1 << 16;
+
+    // Example: high-throughput SPSC ring buffer
+    SPSCFastQueue<int> q(capacity);
+
+    constexpr int N = 1'000'000;
+
+    std::thread producer([&] {
+        for (int i = 0; i < N; ++i) {
+            while (!q.try_push(i)) {
+                // queue full → busy-wait / backoff
+            }
+        }
+    });
+
+    std::thread consumer([&] {
+        int value = 0;
+        for (int i = 0; i < N; ++i) {
+            while (!q.try_pop(value)) {
+                // queue empty → busy-wait / backoff
+            }
+            // process(value);
+        }
+    });
+
+    producer.join();
+    consumer.join();
+
+    std::cout << "Done\n";
+    return 0;
+}
+```
+
+## Sample performance results
+
+Example results from one run on my development machine (higher is better):
+
+```
+ops total (GenSPSC Q for TestStruct):         46,812,631
+ops total (GenSPSC Q for int):                45,871,810
+ops total (Boost Q):                          36,101,913
+ops total (Mutex Q):                          16,865,823
+ops total (GenLocalHTSPSC Q for TestStruct):  65,578,759
+ops total (FastSPSC Q for TestStruct):        93,073,908
+All benchmarks have been run.
+
+```
+
+These numbers are hardware- and config-specific. The main goal is to:
+
+- Compare multiple designs on the same machine
+- See how design choices affect throughput
+
+Planned additions:
+
+- Latency stats (min/avg/p99)
+- Clearer “throughput” definition and reporting
+- Parameter sweeps for message sizes / burst sizes
+
+
+## Design notes
+
+`SPSCFastQueue`
+
+- Bounded SPSC ring buffer with cache-line-padded head / tail atomics.
+- Payload slots themselves are non-atomic in steady state.
+- This tends to make it the top performer in throughput benchmarks.
+
+`GenSPSCQueueLocalHT`
+
+- Uses per-slot version tags (0 / 1) as the handshake mechanism.
+- Very clear correctness story (producer and consumer each check/flip tags).
+- Easy to extend with additional per-slot metadata.
+- But: incurs an acquire + release on each message and toggles metadata in the same cache line as payload, which can hurt throughput on modern cores.
+
+`Baseline designs`
+
+- A simple mutex-based queue provides an intuitive, readable reference.
+- Boost’s lock-free queue offers a widely-used, production-quality baseline.
+
+
+## Future work 
+
+Some ideas for extending / polishing this repo:
+
+- Better separation between queue implementations
+- Latency histograms and p99/p999 reporting
+- NUMA-aware experiments (CPU pinning, cross-socket tests)
+- MPMC variants and comparison against SPSC designs
