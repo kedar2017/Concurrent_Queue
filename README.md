@@ -137,20 +137,21 @@ int main() {
 }
 ```
 
-## Sample performance results
+## Sample benchmark results (x86, higher is better)
 
-Example results from one run on my development machine (higher is better):
+Example results from one run on my development machine:
 
-```
-ops total (GenSPSC Q for TestStruct):         46,812,631
-ops total (GenSPSC Q for int):                45,871,810
-ops total (Boost Q):                          36,101,913
-ops total (Mutex Q):                          16,865,823
-ops total (GenLocalHTSPSC Q for TestStruct):  65,578,759
-ops total (FastSPSC Q for TestStruct):        93,073,908
-All benchmarks have been run.
+| Queue variant                       | Payload       | Ops total    | × vs `Mutex Q` | × vs `Boost::lockfree::queue` |
+|------------------------------------|--------------|-------------:|---------------:|-------------------------------:|
+| `Mutex Q`                          | `int`        | 16,865,823   | 1.00×          | 0.47×                          |
+| `Boost::lockfree::queue`           | `int`        | 36,101,913   | 2.14×          | 1.00×                          |
+| `GenSPSC Q`                        | `int`        | 45,871,810   | 2.72×          | 1.27×                          |
+| `GenSPSC Q`                        | `TestStruct` | 46,812,631   | 2.78×          | 1.30×                          |
+| `GenLocalHTSPSC Q`                 | `TestStruct` | 65,578,759   | 3.89×          | 1.82×                          |
+| `FastSPSC Q`                       | `TestStruct` | 93,073,908   | **5.52×**      | **2.58×**                      |
 
-```
+> “Ops total” = number of successful push/pop pairs completed during the fixed benchmark window.  
+> These numbers are from a single x86 machine and are meant as a comparative snapshot, not absolute performance claims.
 
 These numbers are hardware- and config-specific. The main goal is to:
 
